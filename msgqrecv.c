@@ -12,8 +12,27 @@ struct my_msgbuf {
    char mtext[200];
 };
 
+struct my_intmsgbuf {
+   long mtype;
+   int mtext[1];
+};
+
+void receiveSequence(int msqid, struct my_intmsgbuf intbuf)
+{
+   for(int i = 0; i < 50; i++)
+   {
+      //Receive the integer.
+      if (msgrcv(msqid, &intbuf, sizeof(intbuf.mtext), 0, 0) == -1) {
+         perror("msgrcv, number");
+         exit(1);
+      }
+      printf("recvd: \"%d\"\n", intbuf.mtext[0]);
+   }
+}
+
 int main(void) {
    struct my_msgbuf buf;
+   struct my_intmsgbuf intbuf;
    int msqid;
    int toend;
    key_t key;
@@ -36,6 +55,10 @@ int main(void) {
          exit(1);
       }
       printf("recvd: \"%s\"\n", buf.mtext);
+      if(strcmp(buf.mtext, "start sequence") == 0)
+      {
+         receiveSequence(msqid, intbuf);
+      }
       toend = strcmp(buf.mtext,"end");
       if (toend == 0)
       break;
