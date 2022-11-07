@@ -5,6 +5,7 @@
 struct threadArgs {
 	unsigned int id;
 	unsigned int numThreads;
+	unsigned int squaredId; //Create the new variable in the struct.
 };
 
 void* child(void* params) {
@@ -12,6 +13,10 @@ void* child(void* params) {
 	unsigned int childID = args->id;
 	unsigned int numThreads = args->numThreads;
 	printf("Greetings from child #%u of %u\n", childID, numThreads);
+
+	//Change the squareId variable to the squared value of the child thread ID. Then return the struct.
+	args->squaredId = args->id * args->id;
+	return (void*)args;
 }
 
 int main(int argc, char** argv) {
@@ -27,6 +32,7 @@ int main(int argc, char** argv) {
 		// create threads
 		args[id].id = id;
 		args[id].numThreads = numThreads;
+		args[id].squaredId = -1; //Create starting value for squaredId to be -1. Anything squared can't be negative, so if -1 remains something went wrong.
 		pthread_create(&(children[id]), // our handle for the child
 			NULL, // attributes of the child
 			child, // the function it should run
@@ -34,8 +40,15 @@ int main(int argc, char** argv) {
 	}
 	printf("I am the parent (main) thread.\n");
 	for (unsigned int id = 0; id < numThreads; id++) {
-		pthread_join(children[id], NULL );
+		//Change pthread_join to accept a return value as the second parameter.
+		pthread_join(children[id], (void*)&args[id] );
 	}
+
+	//All child threads should be done, now print out the squared value for each thread.
+	for (unsigned int id = 0; id < numThreads; id++) {
+		printf("The squaredId value for child thread %d = %d\n", id, args[id].squaredId);
+	}
+
 	free(args); // deallocate args vector
 	free(children); // deallocate array
 	return 0;
