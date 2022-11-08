@@ -7,11 +7,19 @@ pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 double bankAccountBalance = 0;
 
 void deposit(double amount) {
+    //Enter critical section
+    pthread_mutex_lock(&lock);
     bankAccountBalance += amount;
+    //Exit critical section
+    pthread_mutex_unlock(&lock);
 }
 
 void withdraw(double amount) {
+    //Enter critical section
+    pthread_mutex_lock(&lock);
     bankAccountBalance -= amount;
+    //Exit critical section
+    pthread_mutex_unlock(&lock);
 }
 
 // utility function to identify even-odd numbers
