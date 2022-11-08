@@ -61,7 +61,6 @@ int main(int argc, char **argv)
 
 			usleep(waitTime * 1000000); //Convert waitTime into microseconds and sleep for that amount of time.
 
-			//putchar('A'); fflush(stdout);
 			sem_post(sem_id2);
 		}
 		//Add code from shmem
@@ -89,7 +88,6 @@ int main(int argc, char **argv)
 
 			usleep(waitTime * 1000000); //Convert waitTime into microseconds and sleep for that amount of time.
 
-			//putchar('B'); fflush(stdout);
 			sem_post(sem_id1);
 		}
 		//Code from shmem
