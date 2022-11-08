@@ -26,7 +26,6 @@ int main(int argc, char **argv)
 	srand(time(NULL)); //Start a random seed.
 	struct shm_struct {
 		int buffer[10]; //Change the buffer size to an array of 10 elements.
-		//Removed empty
 	};
 	volatile struct shm_struct *shmp = NULL;
 	char *addr = NULL;
