@@ -15,12 +15,12 @@ struct professor
 
 unsigned leftChopstick(struct professor *currentProf)
 {
-    //Enter critical section
+    // Enter critical section
     pthread_mutex_lock(&lock);
 
     unsigned succeeded = 0;
 
-    if(chopstickStatus[currentProf->id] == 0) //Check if the left chopstick is taken.
+    if (chopstickStatus[currentProf->id] == 0) // Check if the left chopstick is taken.
     {
         chopstickStatus[currentProf->id] = 1;
         currentProf->holdingLeft = 1;
@@ -34,7 +34,7 @@ unsigned leftChopstick(struct professor *currentProf)
         succeeded = 0;
     }
 
-    //Exit critical section
+    // Exit critical section
     pthread_mutex_unlock(&lock);
 
     return succeeded;
@@ -42,15 +42,15 @@ unsigned leftChopstick(struct professor *currentProf)
 
 unsigned rightChopstick(struct professor *currentProf)
 {
-    //Enter critical section
+    // Enter critical section
     pthread_mutex_lock(&lock);
 
     unsigned succeeded = 0;
 
-    if(chopstickStatus[(currentProf->id + 1) % 5] == 0) //Check if the right chopstick is taken.
+    if (chopstickStatus[(currentProf->id + 1) % 5] == 0) // Check if the right chopstick is taken.
     {
         chopstickStatus[(currentProf->id + 1) % 5] = 1;
-        currentProf->holdingLeft = 1;
+        currentProf->holdingRight = 1;
 
         printf("Professor %d picked up their right chopstick\n", currentProf->id);
         succeeded = 1;
@@ -58,10 +58,21 @@ unsigned rightChopstick(struct professor *currentProf)
     else
     {
         printf("Professor %d failed at picking up their right chopstick\n", currentProf->id);
+
+        // Check if the chopstick that's left of the current professor's left chopstick is taken, in that case drop the current professor's left chopstick as
+        // it's a higher likelihood of another professor getting ready to take their right chopstick. This should theoretically be more efficient than always
+        // dropping our left chopstick no matter what whenever taking the right chopstick fails.
+        if (chopstickStatus[(currentProf->id + 4) % 5] == 1)
+        {
+            // Drop current left chopstick.
+            chopstickStatus[currentProf->id] = 0;
+            currentProf->holdingLeft = 0;
+        }
+
         succeeded = 0;
     }
 
-    //Exit critical section
+    // Exit critical section
     pthread_mutex_unlock(&lock);
 
     return succeeded;
@@ -69,7 +80,7 @@ unsigned rightChopstick(struct professor *currentProf)
 
 void putDownChopsticks(struct professor *currentProf)
 {
-    //Enter critical section
+    // Enter critical section
     pthread_mutex_lock(&lock);
 
     chopstickStatus[currentProf->id] = 0;
@@ -79,7 +90,7 @@ void putDownChopsticks(struct professor *currentProf)
 
     printf("Professor %d put down their chopsticks\n", currentProf->id);
 
-    //Exit critical section
+    // Exit critical section
     pthread_mutex_unlock(&lock);
 }
 
@@ -112,30 +123,41 @@ void *cycle(void *args)
             sleep(sleepTime);
 
             // Try to take the left chopstick.
-            if(leftChopstick(profs))
+            if (leftChopstick(profs))
                 break;
         }
 
-        //Enter second loop
-        while(1)
+        // Enter second loop
+        while (1)
         {
-            //Think for 2-8 seconds.
+            // Think for 2-8 seconds.
             sleepTime = 2 + rand() % 7;
             printf("Professor %d is thinking again for %d seconds...\n", profs->id, sleepTime);
             sleep(sleepTime);
 
             // Try to take the right chopstick.
-            if(rightChopstick(profs))
+            if (rightChopstick(profs))
+            {
                 break;
+            }
+
+            if (profs->holdingLeft == 0)
+            {
+                printf("Professor %d dropped their left chopstick.\n", profs->id);
+                break;
+            }
         }
 
-        //Eat for 5-10 seconds.
-        sleepTime = 5 + rand() % 6;
-        printf("Professor %d is eating for %d seconds!!!\n", profs->id, sleepTime);
-        sleep(sleepTime);
+        if (profs->holdingLeft == 1 && profs->holdingRight == 1)
+        {
+            // Eat for 5-10 seconds.
+            sleepTime = 5 + rand() % 6;
+            printf("\nProfessor %d is eating for %d seconds!!!\n\n", profs->id, sleepTime);
+            sleep(sleepTime);
 
-        //Put down both chopsticks
-        putDownChopsticks(profs);
+            // Put down both chopsticks
+            putDownChopsticks(profs);
+        }
     }
 }
 
