@@ -17,7 +17,8 @@ int main(int argc, char **argv)
 	srand(time(NULL)); //Start a random seed.
 	struct shm_struct {
 		int buffer[10]; //Change the buffer size to an array of 10 elements.
-		unsigned empty;
+		int startPos; //Current start position of the circular buffer
+		int endPos; //Current end position of the circular buffer
 	};
 	volatile struct shm_struct *shmp = NULL;
 	char *addr = NULL;
@@ -30,16 +31,19 @@ int main(int argc, char **argv)
 	/* allocate a chunk of shared memory */
 	shmid = shmget(IPC_PRIVATE, SHMSIZE, IPC_CREAT | SHM_R | SHM_W);
 	shmp = (struct shm_struct *) shmat(shmid, addr, 0);
-	shmp->empty = 0;
+	shmp->startPos = 0;
+	shmp->endPos = 0;
 	pid = fork();
 	if (pid != 0) {
 		/* here's the parent, acting as producer */
 		while (var1 < 100) {
 			/* write to shmem */
 			var1++;
-			while (shmp->empty == 1); /* busy wait until the buffer is empty */
+			//Without this while loop, the problem of adding new numbers before the consumer has fetched the number would occur. Causing us to lose numbers
+			while (shmp->endPos - shmp->startPos > 9); /* busy wait until the buffer isn't full */
 			printf("Sending %d\n", var1); fflush(stdout);
 			shmp->buffer[((var1 - 1) % 10)] = var1; //Add the number to the correct position in the buffer, between 0-9.
+			shmp->endPos++;
 
 			waitTime = ((float)rand()/(float)RAND_MAX) * 0.5f; //Selects a value between 0-1 and then multiply it by 0.5f to get it as the maximum value possible.
 			if(waitTime < 0.1f)
@@ -48,11 +52,6 @@ int main(int argc, char **argv)
 			}
 
 			usleep(waitTime * 1000000); //Convert waitTime into microseconds and sleep for that amount of time.
-
-			if(((var1 - 1) % 10) == 9)
-			{
-				shmp->empty = 1;
-			}
 		}
 		shmdt(addr);
 		shmctl(shmid, IPC_RMID, shm_buf);
@@ -60,10 +59,13 @@ int main(int argc, char **argv)
 		/* here's the child, acting as consumer */
 		while (var2 < 100) {
 			/* read from shmem */
-			while (shmp->empty == 0); /* busy wait until there is something */
+			while (shmp->endPos - shmp->startPos == 0); /* busy wait until there is something */
+			//If the endPos and startPos would decide what value to be picked it could cause the same numbers to be repeated if for example both variables
+			//were to increment at the same time when fetching the value. Since I'm using it based on the previous var2 this will never occur. But losing numbers can still occur.
 			var2 = shmp->buffer[(var2 % 10)]; //Get the value from the correct spot in the buffer.
 			printf("Received %d\n", var2); fflush(stdout); //Moved the printing to before setting the empty value to 0.
-			
+			shmp->startPos++;
+
 			waitTime = ((float)rand()/(float)RAND_MAX) * 2.0f; //Selects a value between 0-1 and then multiply it by 2.0f to get it as the maximum value possible.
 			if(waitTime < 0.2f)
 			{
@@ -71,11 +73,6 @@ int main(int argc, char **argv)
 			}
 
 			usleep(waitTime * 1000000); //Convert waitTime into microseconds and sleep for that amount of time.
-
-			if(((var2 - 1) % 10) == 9)
-			{
-				shmp->empty = 0;	
-			}
 		}
 		shmdt(addr);
 		shmctl(shmid, IPC_RMID, shm_buf);
