@@ -11,7 +11,7 @@
 
 #define SIZE 1024
 
-//Define struct for typecasting
+// Define struct for typecasting
 struct threadRow
 {
     unsigned int row;
@@ -21,26 +21,26 @@ static double a[SIZE][SIZE];
 static double b[SIZE][SIZE];
 static double c[SIZE][SIZE];
 
-static void
-init_matrix(void)
+void *init_matrix(void *row)
 {
-    int i, j;
+    struct threadRow *i = (struct threadRow *)row;
 
-    for (i = 0; i < SIZE; i++)
-        for (j = 0; j < SIZE; j++)
-        {
-            /* Simple initialization, which enables us to easy check
-             * the correct answer. Each element in c will have the same
-             * value as SIZE after the matmul operation.
-             */
-            a[i][j] = 1.0;
-            b[i][j] = 1.0;
-        }
+    int j;
+
+    for (j = 0; j < SIZE; j++)
+    {
+        /* Simple initialization, which enables us to easy check
+         * the correct answer. Each element in c will have the same
+         * value as SIZE after the matmul operation.
+         */
+        a[i->row][j] = 1.0;
+        b[i->row][j] = 1.0;
+    }
 }
 
 void *matmul_seq(void *row)
 {
-    struct threadRow* i = (struct threadRow*) row;
+    struct threadRow *i = (struct threadRow *)row;
 
     int j, k;
 
@@ -67,19 +67,31 @@ print_matrix(void)
 
 int main(int argc, char **argv)
 {
-    init_matrix();
-
     // Initialize all the 1024 threads.
     pthread_t thread[SIZE];
     struct threadRow rows[SIZE];
 
+    //Initialize matrices
     for (int i = 0; i < SIZE; i++)
     {
         rows[i].row = i;
-        pthread_create(&thread[i], NULL, matmul_seq, (void*)&rows[i]);
+        pthread_create(&thread[i], NULL, init_matrix, (void *)&rows[i]);
     }
 
-    for(int i = 0; i < SIZE; i++)
+    //Join all threads
+    for (int i = 0; i < SIZE; i++)
+    {
+        pthread_join(thread[i], NULL);
+    }
+
+    //Multiply matrices
+    for (int i = 0; i < SIZE; i++)
+    {
+        pthread_create(&thread[i], NULL, matmul_seq, (void *)&rows[i]);
+    }
+
+    //Join all threads
+    for (int i = 0; i < SIZE; i++)
     {
         pthread_join(thread[i], NULL);
     }
