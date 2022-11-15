@@ -40,7 +40,7 @@ int main(int argc, char **argv)
 
 
 	pid_t pid;
-	sem_t *sem_id1 = sem_open(semName1, O_CREAT, O_RDWR, 1);
+	sem_t *sem_id1 = sem_open(semName1, O_CREAT, O_RDWR, 10);
 	sem_t *sem_id2 = sem_open(semName2, O_CREAT, O_RDWR, 0);
 	int i, status;
 
@@ -53,6 +53,8 @@ int main(int argc, char **argv)
 			printf("Sending %d\n", var1); fflush(stdout);
 			shmp->buffer[((var1 - 1) % 10)] = var1; //Add the number to the correct position in the buffer, between 0-9.
 
+			sem_post(sem_id2);
+
 			waitTime = ((float)rand()/(float)RAND_MAX) * 0.5f; //Selects a value between 0-1 and then multiply it by 0.5f to get it as the maximum value possible.
 			if(waitTime < 0.1f)
 			{
@@ -60,8 +62,6 @@ int main(int argc, char **argv)
 			}
 
 			usleep(waitTime * 1000000); //Convert waitTime into microseconds and sleep for that amount of time.
-
-			sem_post(sem_id2);
 		}
 		//Add code from shmem
 		shmdt(addr);
@@ -80,6 +80,8 @@ int main(int argc, char **argv)
 			var2 = shmp->buffer[(var2 % 10)]; //Get the value from the correct spot in the buffer.
 			printf("Received %d\n", var2); fflush(stdout); //Moved the printing to before setting the empty value to 0.
 			
+			sem_post(sem_id1);
+
 			waitTime = ((float)rand()/(float)RAND_MAX) * 2.0f; //Selects a value between 0-1 and then multiply it by 2.0f to get it as the maximum value possible.
 			if(waitTime < 0.2f)
 			{
@@ -87,8 +89,6 @@ int main(int argc, char **argv)
 			}
 
 			usleep(waitTime * 1000000); //Convert waitTime into microseconds and sleep for that amount of time.
-
-			sem_post(sem_id1);
 		}
 		//Code from shmem
 		shmdt(addr);
